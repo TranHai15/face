@@ -1,103 +1,77 @@
-import { useState, useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { WelcomeDisplay } from "./components/WelcomeDisplay";
 import { VisitorsList } from "./components/VisitorsList";
+import { useVisitors } from "./hooks/useVisitors";
+import { useSignalR } from "./hooks/useSignalR";
+import { useVisitorStore } from "./store/visitorStore";
+import { env } from "./config/env";
 
-/**
- * @typedef {Object} Visitor
- * @property {string} id
- * @property {string} fullName
- * @property {string} cccd
- * @property {string} organization
- * @property {string} faceImage
- * @property {Date} checkInTime
- */
-
-// Mock data cho demo
-const mockVisitors = [
-  {
-    id: "1",
-    fullName: "Nguyễn Văn An",
-    cccd: "001234567890",
-    organization: "Công ty TNHH ABC",
-    faceImage: "https://i.pravatar.cc/150?img=12",
-    checkInTime: new Date(Date.now() - 300000),
-  },
-  {
-    id: "2",
-    fullName: "Trần Thị Bình",
-    cccd: "001234567891",
-    organization: "Tập đoàn XYZ",
-    faceImage: "https://i.pravatar.cc/150?img=5",
-    checkInTime: new Date(Date.now() - 180000),
-  },
-  {
-    id: "3",
-    fullName: "Lê Hoàng Cường",
-    cccd: "001234567892",
-    organization: "Sở Kế hoạch và Đầu tư",
-    faceImage: "https://i.pravatar.cc/150?img=33",
-    checkInTime: new Date(Date.now() - 120000),
-  },
-];
-
-const newVisitorQueue = [
-  {
-    id: "4",
-    fullName: "Phạm Minh Đức",
-    cccd: "001234567893",
-    organization: "Viện Nghiên cứu Công nghệ",
-    faceImage: "https://i.pravatar.cc/150?img=15",
-    checkInTime: new Date(),
-  },
-  {
-    id: "5",
-    fullName: "Hoàng Thu Hà",
-    cccd: "001234567894",
-    organization: "Ngân hàng Vietcombank",
-    faceImage: "https://i.pravatar.cc/150?img=9",
-    checkInTime: new Date(),
-  },
-  {
-    id: "6",
-    fullName: "Đỗ Quang Huy",
-    cccd: "001234567895",
-    organization: "Bộ Thông tin và Truyền thông",
-    faceImage: "https://i.pravatar.cc/150?img=68",
-    checkInTime: new Date(),
-  },
-];
+// Mock visitor data pool để tự động thêm khách
+// const MOCK_VISITORS = [
+//   {
+//     fullName: "Nguyễn Văn An",
+//     cccd: "001234567890",
+//     organization: "Công ty TNHH ABC",
+//     faceImage: "https://i.pravatar.cc/150?img=12",
+//   },
+//   {
+//     fullName: "Trần Thị Bình",
+//     cccd: "001234567891",
+//     organization: "Tập đoàn XYZ",
+//     faceImage: "https://i.pravatar.cc/150?img=5",
+//   },
+//   {
+//     fullName: "Lê Hoàng Cường",
+//     cccd: "001234567892",
+//     organization: "Sở Kế hoạch và Đầu tư",
+//     faceImage: "https://i.pravatar.cc/150?img=33",
+//   },
+//   {
+//     fullName: "Phạm Thị Dung",
+//     cccd: "001234567893",
+//     organization: "Bộ Công Thương",
+//     faceImage: "https://i.pravatar.cc/150?img=47",
+//   },
+//   {
+//     fullName: "Hoàng Văn Em",
+//     cccd: "001234567894",
+//     organization: "Ngân hàng Nhà nước",
+//     faceImage: "https://i.pravatar.cc/150?img=68",
+//   },
+//   {
+//     fullName: "Võ Thị Phương",
+//     cccd: "001234567895",
+//     organization: "Công ty Cổ phần DEF",
+//     faceImage: "https://i.pravatar.cc/150?img=15",
+//   },
+//   {
+//     fullName: "Đỗ Minh Quang",
+//     cccd: "001234567896",
+//     organization: "Tổng Công ty GHI",
+//     faceImage: "https://i.pravatar.cc/150?img=20",
+//   },
+//   {
+//     fullName: "Bùi Thị Lan",
+//     cccd: "001234567897",
+//     organization: "Công ty TNHH JKL",
+//     faceImage: "https://i.pravatar.cc/150?img=25",
+//   },
+// ];
 
 export default function App() {
-  const [currentVisitor, setCurrentVisitor] = useState(null);
-  const [visitorsList, setVisitorsList] = useState(mockVisitors);
-  const [queueIndex, setQueueIndex] = useState(0);
+  // Sử dụng custom hooks để quản lý state
+  const { visitors, currentVisitor, isLoading, error } = useVisitors();
+  // Kết nối SignalR để nhận real-time updates
+  const { isConnected, connectionState } = useSignalR();
+  console.log("🚀 ~ App ~ isConnected:", isConnected);
 
-  // Simulate camera AI detecting new visitors
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (queueIndex < newVisitorQueue.length) {
-        const newVisitor = {
-          ...newVisitorQueue[queueIndex],
-          checkInTime: new Date(),
-        };
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
 
-        // Show welcome screen for new visitor
-        setCurrentVisitor(newVisitor);
-
-        // Add to visitors list
-        setVisitorsList((prev) => [newVisitor, ...prev]);
-
-        setQueueIndex((prev) => prev + 1);
-
-        // Clear current visitor after 5 seconds
-        setTimeout(() => {
-          setCurrentVisitor(null);
-        }, 5000);
-      }
-    }, 8000); // New visitor every 8 seconds
-
-    return () => clearInterval(interval);
-  }, [queueIndex]);
+  if (error) {
+    return <div>Error: {error}</div>;
+  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -109,7 +83,7 @@ export default function App() {
               Hệ Thống Nhận Diện Khách
             </h1>
             <p className="text-xs lg:text-sm text-white/85 font-medium">
-              AI Face Recognition System
+              {env.APP_NAME}
             </p>
           </div>
         </div>
@@ -126,7 +100,7 @@ export default function App() {
 
             {/* Visitors List - Takes 1/3 of the space */}
             <div className="lg:col-span-1">
-              <VisitorsList visitors={visitorsList} />
+              <VisitorsList visitors={visitors} />
             </div>
           </div>
         </div>
@@ -138,8 +112,14 @@ export default function App() {
           <div className="flex flex-col sm:flex-row justify-between items-center gap-1.5 text-xs text-muted-foreground">
             <div>© 2025 AI Face Recognition System</div>
             <div className="flex items-center gap-1.5">
-              <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse"></div>
-              <span>Camera AI đang hoạt động</span>
+              <div
+                className={`w-1.5 h-1.5 rounded-full ${
+                  isConnected ? "bg-green-500 animate-pulse" : "bg-red-500"
+                }`}
+              ></div>
+              <span>
+                {isConnected ? "Camera AI đang hoạt động" : "Đang kết nối..."}
+              </span>
             </div>
           </div>
         </div>
